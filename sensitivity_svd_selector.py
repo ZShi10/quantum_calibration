@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Literal, Optional, Sequence, Tuple
 
 import numpy as np
-
+from parameter_registry import DEFAULT_PARAMETER_REGISTRY
 from lightweight_cptp_channel import (
     CPTPModelConfig,
     LocalNoiseRates,
@@ -174,24 +174,17 @@ class FiniteDifferenceConfig:
     use_central_difference: bool = True
 
     def step_for(self, name: ParameterName) -> float:
-        defaults: Dict[ParameterName, float] = {
-            "dphi": 1.0e-4,
-            "theta": 5.0e-5,
-            "chi": 1.0e-3,
-            "swap_x": 5.0e-5,
-            "swap_y": 5.0e-5,
-            "t1": 2.0e-5,
-            "tphi": 2.0e-5,
-            "local_depolarizing": 1.0e-5,
-            "leakage": 1.0e-5,
-            "seepage": 1.0e-5,
-            "two_qubit_depolarizing": 2.0e-5,
-            "readout_0_to_1": 1.0e-4,
-            "readout_1_to_0": 1.0e-4,
-        }
         if self.step_sizes is not None and name in self.step_sizes:
-            return float(self.step_sizes[name])
-        return defaults[name]
+            step = float(self.step_sizes[name])
+        else:
+            step = DEFAULT_PARAMETER_REGISTRY.finite_difference_step(name)
+
+        if step <= 0.0:
+            raise ValueError(
+                f"finite-difference step for {name} must be positive"
+            )
+
+        return step
 
 @dataclass(frozen=True)
 class JacobianResult:
