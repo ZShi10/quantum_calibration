@@ -240,6 +240,9 @@ class CircuitSpec:
         """
         Validate circuit specification.
         """
+        if not self.name:
+            raise ValueError("circuit name must be non-empty")
+
         if self.num_qubits <= 0:
             raise ValueError("num_qubits must be positive")
 
@@ -261,6 +264,66 @@ class CircuitSpec:
 
         if not self.measurements:
             raise ValueError("at least one measurement is required")
+
+        measurement_names = [
+            measurement.name for measurement in self.measurements
+        ]
+        if any(not name for name in measurement_names):
+            raise ValueError("measurement name must be non-empty")
+
+        if len(set(measurement_names)) != len(measurement_names):
+            raise ValueError(
+                f"measurement names must be unique within circuit {self.name}"
+            )
+
+
+@dataclass(frozen=True)
+class ObservableLayout:
+    """
+    Stable row layout for a batch of circuit observables.
+
+    Labels follow circuit order and then measurement declaration order.
+    """
+
+    labels: Tuple[str, ...]
+    circuit_row_indices: Tuple[Tuple[int, ...], ...]
+
+    @property
+    def size(self) -> int:
+        return len(self.labels)
+
+    def rows_for_circuit(self, circuit_index: int) -> Tuple[int, ...]:
+        return self.circuit_row_indices[circuit_index]
+
+def build_observable_layout(
+    circuits: Sequence[CircuitSpec],
+) -> ObservableLayout:
+    """
+    Build and validate the observable row layout for a circuit batch.
+    """
+    if not circuits:
+        raise ValueError("circuits must be non-empty")
+
+    circuit_names = [circuit.name for circuit in circuits]
+    if len(set(circuit_names)) != len(circuit_names):
+        raise ValueError("circuit names must be unique")
+
+    labels: List[str] = []
+    circuit_row_indices: List[Tuple[int, ...]] = []
+
+    for circuit in circuits:
+        circuit.validate()
+        start = len(labels)
+        labels.extend(
+            f"{circuit.name}/{measurement.name}"
+            for measurement in circuit.measurements
+        )
+        circuit_row_indices.append(tuple(range(start, len(labels))))
+
+    return ObservableLayout(
+        labels=tuple(labels),
+        circuit_row_indices=tuple(circuit_row_indices),
+    )
 
 
 @dataclass(frozen=True)
