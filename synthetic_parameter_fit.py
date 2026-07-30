@@ -65,6 +65,8 @@ try:
 except Exception:
     scipy_least_squares = None
 
+from parameter_registry import DEFAULT_PARAMETER_REGISTRY
+
 from multi_qubit_circuit_simulator import (
     CircuitSpec,
     simulate_observable_vector,
@@ -167,6 +169,38 @@ CZ_CORE_7_PARAMETER_NAMES = (
     "two_qubit_depolarizing",
 )
 
+def fit_parameter_spec_from_registry(
+    names: Tuple[ParameterName, ...],
+) -> FitParameterSpec:
+    """Build a fitting specification from registered parameter metadata."""
+    scales: Dict[ParameterName, float] = {}
+    lower_bounds: Dict[ParameterName, float] = {}
+    upper_bounds: Dict[ParameterName, float] = {}
+
+    for name in names:
+        parameter_spec = DEFAULT_PARAMETER_REGISTRY.get(name)
+
+        if not parameter_spec.supports_default_fit:
+            raise ValueError(
+                f"parameter {name} has no default fitting metadata"
+            )
+
+        assert parameter_spec.fit_scale is not None
+        assert parameter_spec.lower_bound is not None
+        assert parameter_spec.upper_bound is not None
+
+        scales[name] = parameter_spec.fit_scale
+        lower_bounds[name] = parameter_spec.lower_bound
+        upper_bounds[name] = parameter_spec.upper_bound
+
+    fit_spec = FitParameterSpec(
+        names=names,
+        scales=scales,
+        lower_bounds=lower_bounds,
+        upper_bounds=upper_bounds,
+    )
+    fit_spec.validate()
+    return fit_spec
 
 def default_fit_parameter_spec() -> FitParameterSpec:
     """
@@ -187,39 +221,9 @@ def default_fit_parameter_spec() -> FitParameterSpec:
     In the current simulator, t1 and tphi are per-cycle channel
     probabilities/rates rather than physical relaxation times.
     """
-    fit_spec = FitParameterSpec(
-        names=CZ_CORE_7_PARAMETER_NAMES,
-        scales={
-            "dphi": 1.0e-2,
-            "swap_x": 5.0e-3,
-            "swap_y": 5.0e-3,
-            "t1": 2.0e-4,
-            "tphi": 3.0e-4,
-            "leakage": 5.0e-5,
-            "two_qubit_depolarizing": 5.0e-4,
-        },
-        lower_bounds={
-            "dphi": -0.1,
-            "swap_x": -0.05,
-            "swap_y": -0.05,
-            "t1": 0.0,
-            "tphi": 0.0,
-            "leakage": 0.0,
-            "two_qubit_depolarizing": 0.0,
-        },
-        upper_bounds={
-            "dphi": 0.1,
-            "swap_x": 0.05,
-            "swap_y": 0.05,
-            "t1": 5.0e-3,
-            "tphi": 5.0e-3,
-            "leakage": 2.0e-3,
-            "two_qubit_depolarizing": 1.0e-2,
-        },
+    return fit_parameter_spec_from_registry(
+        CZ_CORE_7_PARAMETER_NAMES
     )
-
-    fit_spec.validate()
-    return fit_spec
 
 
 def point_to_normalized_vector(

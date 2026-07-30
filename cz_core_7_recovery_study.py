@@ -98,6 +98,7 @@ from synthetic_parameter_fit import (
     fit_synthetic_data,
     generate_synthetic_data,
     simulate_selected_vector,
+    fit_parameter_spec_from_registry,
 )
 
 
@@ -175,38 +176,7 @@ def seven_parameter_fit_spec() -> FitParameterSpec:
     """
     Return the fitting specification for the complete CZ-core-7 model.
     """
-    spec = FitParameterSpec(
-        names=CZ_CORE_7_PARAMETERS,
-        scales={
-            "dphi": 1.0e-2,
-            "swap_x": 5.0e-3,
-            "swap_y": 5.0e-3,
-            "t1": 2.0e-4,
-            "tphi": 3.0e-4,
-            "leakage": 5.0e-5,
-            "two_qubit_depolarizing": 5.0e-4,
-        },
-        lower_bounds={
-            "dphi": -0.1,
-            "swap_x": -0.05,
-            "swap_y": -0.05,
-            "t1": 0.0,
-            "tphi": 0.0,
-            "leakage": 0.0,
-            "two_qubit_depolarizing": 0.0,
-        },
-        upper_bounds={
-            "dphi": 0.1,
-            "swap_x": 0.05,
-            "swap_y": 0.05,
-            "t1": 5.0e-3,
-            "tphi": 5.0e-3,
-            "leakage": 2.0e-3,
-            "two_qubit_depolarizing": 1.0e-2,
-        },
-    )
-    spec.validate()
-    return spec
+    return fit_parameter_spec_from_registry(CZ_CORE_7_PARAMETERS)
 
 
 def make_design_point() -> ParameterPoint:
